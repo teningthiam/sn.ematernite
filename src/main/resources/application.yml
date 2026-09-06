@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/e_maternite_db
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: tening
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
