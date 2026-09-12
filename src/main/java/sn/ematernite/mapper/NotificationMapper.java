@@ -1,4 +1,14 @@
 package sn.ematernite.mapper;
 
-public class NotificationMapper {
+import org.mapstruct.Mapper;
+import org.mapstruct.ReportingPolicy;
+import sn.ematernite.entity.NotificationEntity;
+import sn.ematernite.model.response.NotificationResponse;
+
+@Mapper(
+        componentModel = "spring",
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
+public interface NotificationMapper
+        extends EntityMapper<NotificationResponse, NotificationEntity> {
 }
