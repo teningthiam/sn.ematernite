@@ -47,16 +47,19 @@ public class AuthServiceImpl implements AuthService {
         OtpCodeEntity otpCode = OtpCodeEntity.builder()
                 .telephone(request.getTelephone())
                 .code(passwordEncoder.encode(code))
-                .expireLe(LocalDateTime.now().plusMinutes(5))
+                .expireLe(LocalDateTime.now().plusMinutes(30))
                 .estUtilise(false)
                 .build();
 
         otpCodeRepository.save(otpCode);
-        log.info("OTP généré pour {} : {}", request.getTelephone(), code);
+        log.info("=== OTP généré pour {} : {} ===",
+                request.getTelephone(), code);
     }
 
     @Override
     public AuthResponse verifierOTP(VerifyOtpRequest request) {
+        log.info("Vérification OTP pour : {}", request.getTelephone());
+
         OtpCodeEntity otpCode = otpCodeRepository
                 .findByTelephoneAndEstUtiliseFalse(request.getTelephone())
                 .orElseThrow(() -> new RuntimeException(
@@ -74,11 +77,23 @@ public class AuthServiceImpl implements AuthService {
         otpCode.setEstUtilise(true);
         otpCodeRepository.save(otpCode);
 
+        log.info("OTP valide — recherche utilisateur...");
+
         UtilisateurEntity utilisateur =
                 trouverParTelephone(request.getTelephone());
 
+        log.info("Utilisateur trouvé : {} {}",
+                utilisateur.getNom(), utilisateur.getPrenom());
+
+        log.info("Génération du token JWT...");
+
+        String token = jwtService.generateToken(utilisateur);
+
+        log.info("Token généré avec succès : {}",
+                token.substring(0, 20) + "...");
+
         return AuthResponse.builder()
-                .token(jwtService.generateToken(utilisateur))
+                .token(token)
                 .role(utilisateur.getRole().name())
                 .telephone(utilisateur.getTelephone())
                 .nom(utilisateur.getNom())
@@ -88,6 +103,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse connexionParPin(PinRequest request) {
+        log.info("Connexion PIN pour : {}", request.getTelephone());
+
         UtilisateurEntity utilisateur =
                 trouverParTelephone(request.getTelephone());
 
@@ -96,8 +113,10 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Code PIN incorrect");
         }
 
+        String token = jwtService.generateToken(utilisateur);
+
         return AuthResponse.builder()
-                .token(jwtService.generateToken(utilisateur))
+                .token(token)
                 .role(utilisateur.getRole().name())
                 .telephone(utilisateur.getTelephone())
                 .nom(utilisateur.getNom())
@@ -105,17 +124,18 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // Cherche dans les 3 repositories concrets
     private UtilisateurEntity trouverParTelephone(String telephone) {
         Optional<? extends UtilisateurEntity> trouve =
                 femmeEnceinteRepository.findByTelephone(telephone);
 
         if (trouve.isEmpty()) {
-            trouve = professionnelRepository.findByTelephone(telephone);
+            trouve = professionnelRepository
+                    .findByTelephone(telephone);
         }
 
         if (trouve.isEmpty()) {
-            trouve = administrateurRepository.findByTelephone(telephone);
+            trouve = administrateurRepository
+                    .findByTelephone(telephone);
         }
 
         return trouve.orElseThrow(() -> new RuntimeException(
